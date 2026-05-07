@@ -280,18 +280,6 @@ fontSize: 13, color: G.textMid, lineHeight: 1.65,
 );
 }
 
-function SubSectionTitle({ children }) {
-return (
-<div style={{
-fontSize: 11, fontWeight: 700, color: G.textMid, letterSpacing: "0.06em",
-textTransform: "uppercase", marginBottom: 16, marginTop: 8,
-paddingBottom: 8, borderBottom: `1px dashed ${G.border}`,
-}}>
-{children}
-</div>
-);
-}
-
 // ─── Upload Field ────────────────────────────────────────────────────────────
 function UploadField({ label, desc }) {
 const [file, setFile] = useState(null);
