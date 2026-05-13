@@ -1,9 +1,7 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 
 import { db } from "./firebase";
 import { collection, addDoc } from "firebase/firestore";
-
-console.log("FUNCIONA APP");
 
 const G = {
 bg: "#f7f7f6",
@@ -282,41 +280,261 @@ fontSize: 13, color: G.textMid, lineHeight: 1.65,
 
 // ─── Upload Field ────────────────────────────────────────────────────────────
 function UploadField({ label, desc }) {
-const [file, setFile] = useState(null);
-return (
-<div style={{ marginBottom: 12 }}>
-<div style={{
-border: `1px dashed ${file ? G.green : G.borderStrong}`,
-borderRadius: G.radius, padding: "14px 16px",
-background: file ? G.greenBg : G.bg,
-display: "flex", alignItems: "center", gap: 12,
-transition: "all 0.15s",
-}}>
-<div style={{
-width: 32, height: 32, borderRadius: 6, flexShrink: 0,
-background: file ? G.greenBorder : G.border,
-display: "flex", alignItems: "center", justifyContent: "center",
-color: file ? G.green : G.textLight,
-}}>
-<IconFile />
-</div>
-<div style={{ flex: 1, minWidth: 0 }}>
-<div style={{ fontSize: 13, fontWeight: 500, color: G.text }}>{label}</div>
-{desc && <div style={{ fontSize: 11, color: G.textLight, marginTop: 2 }}>{desc}</div>}
-{file && <div style={{ fontSize: 11, color: G.green, marginTop: 3, fontWeight: 500 }}>{file.name}</div>}
-</div>
-<label style={{
-fontSize: 12, fontWeight: 600, color: G.accent, cursor: "pointer",
-padding: "5px 10px", border: `1px solid ${G.accentBorder}`,
-borderRadius: G.radius, background: G.accentLight, whiteSpace: "nowrap",
-transition: "all 0.15s",
-}}>
-{file ? "Cambiar" : "Adjuntar"}
-<input type="file" style={{ display: "none" }} onChange={e => setFile(e.target.files[0])} />
-</label>
-</div>
-</div>
-);
+  const [file, setFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const inputRef = useRef(null);
+
+  const handleFileChange = async (e) => {
+    const selectedFile = e.target.files && e.target.files[0];
+    if (!selectedFile) return;
+    setFile(selectedFile);
+    setUploading(true);
+    const data = new FormData();
+    data.append("file", selectedFile);
+    data.append("upload_preset", "lifeline_uploads");
+    try {
+      const res = await fetch("https://api.cloudinary.com/v1_1/dtphxe12j/image/upload", { method: "POST", body: data });
+      const uploadedFile = await res.json();
+      if (uploadedFile.error) {
+        alert("Error: " + uploadedFile.error.message);
+      } else {
+        alert("Archivo subido correctamente");
+      }
+    } catch (error) {
+      console.error("Error subiendo:", error);
+    } finally {
+      setUploading(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  };
+
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <label style={{
+        border: `1px dashed ${file ? G.green : G.borderStrong}`,
+        borderRadius: G.radius, padding: "14px 16px",
+        background: file ? G.greenBg : G.bg,
+        display: "flex", alignItems: "center", gap: 12,
+        cursor: "pointer", transition: "all 0.15s",
+      }}>
+        <div style={{
+          width: 32, height: 32, borderRadius: 6, flexShrink: 0,
+          background: file ? G.greenBorder : G.border,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          color: file ? G.green : G.textLight,
+        }}>
+          <IconFile />
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 500, color: G.text }}>
+            {uploading ? "Subiendo..." : label}
+          </div>
+          {desc && <div style={{ fontSize: 11, color: G.textLight, marginTop: 2 }}>{desc}</div>}
+          {file && <div style={{ fontSize: 11, color: G.green, marginTop: 3, fontWeight: 500 }}>✓ {file.name}</div>}
+        </div>
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*,application/pdf"
+          onChange={handleFileChange}
+          style={{ position: "absolute", width: 1, height: 1, opacity: 0 }}
+        />
+      </label>
+    </div>
+  );
+}
+
+// ─── WebView Detection ───────────────────────────────────────────────────────
+function isIOSWebView() {
+  const ua = window.navigator.userAgent;
+  const isIOS = /iPhone|iPad|iPod/.test(ua);
+  if (!isIOS) return false;
+
+  // WhatsApp WebView se identifica explícitamente
+  const isWhatsApp = /WhatsApp/.test(ua);
+  if (isWhatsApp) return true;
+
+  // Otros WebViews sin Safari real
+  const isRealSafari = /Safari\//.test(ua) && /Version\//.test(ua);
+  const isChrome = /CriOS\//.test(ua);
+  const isFirefox = /FxiOS\//.test(ua);
+  return !isRealSafari && !isChrome && !isFirefox;
+}
+
+  function WebViewBlock() {
+  const currentURL =
+    window.location.href;
+
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        background: G.bg,
+        fontFamily:
+          "'DM Sans', sans-serif",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 24,
+      }}
+    >
+      <div
+        style={{
+          maxWidth: 400,
+          width: "100%",
+          textAlign: "center",
+        }}
+      >
+        <div
+          style={{
+            width: 64,
+            height: 64,
+            borderRadius: "50%",
+            background: G.amberBg,
+            border: `1px solid ${G.amberBorder}`,
+            margin: "0 auto 24px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 28,
+          }}
+        >
+          🔒
+        </div>
+
+        <h2
+          style={{
+            fontSize: 24,
+            fontWeight: 500,
+            fontFamily:
+              "'EB Garamond', serif",
+            color: G.text,
+            marginBottom: 10,
+            letterSpacing: "-0.02em",
+          }}
+        >
+          Abre este enlace en Safari
+        </h2>
+
+        <p
+          style={{
+            fontSize: 14,
+            color: G.textMid,
+            lineHeight: 1.7,
+            marginBottom: 24,
+          }}
+        >
+          WhatsApp no permite subir
+          documentos desde iPhone.
+          Para completar tu expediente
+          necesitas abrirlo en Safari.
+        </p>
+
+        <div
+          style={{
+            background: G.surface,
+            border: `1px solid ${G.border}`,
+            borderRadius: G.radiusMd,
+            padding: "16px 20px",
+            marginBottom: 24,
+            textAlign: "left",
+          }}
+        >
+          {[
+            [
+              "1",
+              "Toca los tres puntos (•••) arriba a la derecha",
+            ],
+            [
+              "2",
+              'Selecciona "Abrir en Safari"',
+            ],
+            [
+              "3",
+              "El formulario abrirá completo y podrás subir tus documentos",
+            ],
+          ].map(([n, text]) => (
+            <div
+              key={n}
+              style={{
+                display: "flex",
+                gap: 12,
+                alignItems: "flex-start",
+                marginBottom:
+                  n === "3"
+                    ? 0
+                    : 12,
+              }}
+            >
+              <div
+                style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: "50%",
+                  flexShrink: 0,
+                  background:
+                    G.accentLight,
+                  border: `1px solid ${G.accentBorder}`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent:
+                    "center",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: G.accent,
+                }}
+              >
+                {n}
+              </div>
+
+              <span
+                style={{
+                  fontSize: 13,
+                  color: G.textMid,
+                  lineHeight: 1.5,
+                  paddingTop: 3,
+                }}
+              >
+                {text}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        <a
+          href={currentURL}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: "block",
+            width: "100%",
+            padding: "13px 20px",
+            borderRadius: G.radius,
+            background: G.accent,
+            color: "#fff",
+            fontSize: 14,
+            fontWeight: 600,
+            textDecoration: "none",
+            textAlign: "center",
+            fontFamily:
+              "'DM Sans', sans-serif",
+          }}
+        >
+          Abrir en Safari →
+        </a>
+
+        <p
+          style={{
+            fontSize: 11,
+            color: G.textLight,
+            marginTop: 12,
+          }}
+        >
+          Tu información no se perderá
+        </p>
+      </div>
+    </div>
+  );
 }
 
 // ─── Beneficiary Entry ───────────────────────────────────────────────────────
@@ -345,6 +563,7 @@ padding: "16px", marginBottom: 12, background: G.bg,
 
 // ─── MAIN ────────────────────────────────────────────────────────────────────
 export default function App() {
+ 
 // Progress
 const SECTIONS = 10;
 
@@ -365,6 +584,9 @@ notasAdicionales: "", interesRecuperar: "",
 
 const [beneficiarios, setBeneficiarios] = useState([{ nombre: "", relacion: "", porcentaje: "", fecha: "" }]);
 const [submitted, setSubmitted] = useState(false);
+
+ if (isIOSWebView())
+    return <WebViewBlock />;
 
 const set = (k, v) => setDatos(p => ({ ...p, [k]: v }));
 
@@ -404,7 +626,6 @@ return (
 <div style={{ minHeight: "100vh", background: G.bg, fontFamily: "‘DM Sans’, sans-serif", color: G.text }}>
 <style>{css}</style>
 
-```
   {/* ── TOP BAR ── */}
   <div style={{ background: G.surface, borderBottom: `1px solid ${G.border}`, position: "sticky", top: 0, zIndex: 50 }}>
     <div style={{ maxWidth: 760, margin: "0 auto", padding: "0 24px" }}>
@@ -643,6 +864,9 @@ return (
           </div>
           <span style={{ fontSize: 12, color: G.textLight }}>{progress}% completado</span>
         </div>
+
+        
+
         <button onClick={async () => {
   try {
     await addDoc(collection(db, "clientes"), {
